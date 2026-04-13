@@ -12,8 +12,10 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
+  const router = useRouter();
   // Estados para controle do Slider de Distância
   const [sliderOpen, setSliderOpen] = useState(false);
   const [distancia, setDistancia] = useState(20);
@@ -32,7 +34,7 @@ export default function HomeScreen() {
     {
       id: "1",
       nome: "Morro do Finder",
-      categoria: "Trilhaa",
+      categoria: "Trilha",
       distancia: 4.5,
       descricao: "Vista panorâmica incrível da cidade.",
       estrelas: 5,
@@ -181,6 +183,12 @@ export default function HomeScreen() {
               key={pico.id}
               style={styles.card}
               activeOpacity={0.95}
+              onPress={() =>
+                router.push({
+                  pathname: "/pico/[id]",
+                  params: { id: pico.id },
+                })
+              }
             >
               {/* Imagem com o botão de favorito flutuante */}
               <View>

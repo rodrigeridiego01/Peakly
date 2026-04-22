@@ -1,0 +1,435 @@
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex f8c6c2e..3921188 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -41,3 +41,5 @@[m [mapp-example[m
+ # generated native folders[m
+ /ios[m
+ /android[m
+[32m+[m
+[32m+[m[32m.idea/[m
+[1mdiff --git a/app.json b/app.json[m
+[1mindex 77bcd5d..37c06f9 100644[m
+[1m--- a/app.json[m
+[1m+++ b/app.json[m
+[36m@@ -19,7 +19,8 @@[m
+         "monochromeImage": "./assets/images/android-icon-monochrome.png"[m
+       },[m
+       "edgeToEdgeEnabled": true,[m
+[31m-      "predictiveBackGestureEnabled": false[m
+[32m+[m[32m      "predictiveBackGestureEnabled": false,[m
+[32m+[m[32m      "package": "com.anonymous.Peakly"[m
+     },[m
+     "web": {[m
+       "output": "static",[m
+[1mdiff --git a/app/(tabs)/profile.tsx b/app/(tabs)/profile.tsx[m
+[1mindex a81307e..35d342c 100644[m
+[1m--- a/app/(tabs)/profile.tsx[m
+[1m+++ b/app/(tabs)/profile.tsx[m
+[36m@@ -1,12 +1,643 @@[m
+[31m-import { ThemedText } from "@/components/themed-text";[m
+[31m-import { ThemedView } from "@/components/themed-view";[m
+[32m+[m[32mimport React, { useState } from "react";[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  Dimensions,[m
+[32m+[m[32m  Image,[m
+[32m+[m[32m  ImageSourcePropType,[m
+[32m+[m[32m  Modal,[m
+[32m+[m[32m  SafeAreaView,[m
+[32m+[m[32m  ScrollView,[m
+[32m+[m[32m  StatusBar,[m
+[32m+[m[32m  StyleSheet,[m
+[32m+[m[32m  Text,[m
+[32m+[m[32m  TextInput,[m
+[32m+[m[32m  TouchableOpacity,[m
+[32m+[m[32m  View,[m
+[32m+[m[32m} from "react-native";[m
+[32m+[m
+[32m+[m[32mconst { width } = Dimensions.get("window");[m
+[32m+[m[32mconst PHOTO_SIZE = (width - 4) / 3;[m
+[32m+[m
+[32m+[m[32m// ─── Tipos ────────────────────────────────────────────────────────────────────[m
+[32m+[m[32minterface Photo {[m
+[32m+[m[32m  id: string;[m
+[32m+[m[32m  uri: ImageSourcePropType; // ✅ aceita require() e { uri: string }[m
+[32m+[m[32m  location: string;[m
+[32m+[m[32m  likes: number;[m
+[32m+[m[32m  comments: Comment[];[m
+[32m+[m[32m  liked: boolean;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32minterface Comment {[m
+[32m+[m[32m  id: string;[m
+[32m+[m[32m  user: string;[m
+[32m+[m[32m  avatar: string;[m
+[32m+[m[32m  text: string;[m
+[32m+[m[32m  time: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// ─── Dados de exemplo ─────────────────────────────────────────────────────────[m
+[32m+[m[32mconst MOCK_PHOTOS: Photo[] = [[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "1",[m
+[32m+[m[32m    uri: require("../../assets/images/soneca.jpeg"),[m
+[32m+[m[32m    location: "Nome do Lugar",[m
+[32m+[m[32m    likes: 2424,[m
+[32m+[m[32m    liked: false,[m
+[32m+[m[32m    comments: [],[m
+[32m+[m[32m  },[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "2",[m
+[32m+[m[32m    uri: require("../../assets/images/gorizes.jpeg"),[m
+[32m+[m[32m    location: "Nome do Lugar",[m
+[32m+[m[32m    likes: 999,[m
+[32m+[m[32m    liked: true,[m
+[32m+[m[32m    comments: [],[m
+[32m+[m[32m  },[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "3",[m
+[32m+[m[32m    uri: require("../../assets/images/mlks-lisos.jpeg"),[m
+[32m+[m[32m    location: "Nome do Lugar",[m
+[32m+[m[32m    likes: 123456789,[m
+[32m+[m[32m    liked: true,[m
+[32m+[m[32m    comments: [],[m
+[32m+[m[32m  },[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "1",[m
+[32m+[m[32m    uri: require("../../assets/images/banheiro-do-gabi.jpeg"),[m
+[32m+[m[32m    location: "Nome do Lugar",[m
+[32m+[m[32m    likes: 666,[m
+[32m+[m[32m    liked: true,[m
+[32m+[m[32m    comments: [],[m
+[32m+[m[32m  },[m
+[32m+[m[32m];[m
+[32m+[m
+[32m+[m[32m// ─── Componente de estatística ────────────────────────────────────────────────[m
+[32m+[m[32mconst StatBox = ({[m
+[32m+[m[32m  value,[m
+[32m+[m[32m  label,[m
+[32m+[m[32m}: {[m
+[32m+[m[32m  value: string | number;[m
+[32m+[m[32m  label: string;[m
+[32m+[m[32m}) => ([m
+[32m+[m[32m  <View style={styles.statBox}>[m
+[32m+[m[32m    <Text style={styles.statValue}>{value}</Text>[m
+[32m+[m[32m    <Text style={styles.statLabel}>{label}</Text>[m
+[32m+[m[32m  </View>[m
+[32m+[m[32m);[m
+[32m+[m
+[32m+[m[32m// ─── Modal de comentários ─────────────────────────────────────────────────────[m
+[32m+[m[32mconst CommentsModal = ({[m
+[32m+[m[32m  visible,[m
+[32m+[m[32m  photo,[m
+[32m+[m[32m  onClose,[m
+[32m+[m[32m  onAddComment,[m
+[32m+[m[32m}: {[m
+[32m+[m[32m  visible: boolean;[m
+[32m+[m[32m  photo: Photo | null;[m
+[32m+[m[32m  onClose: () => void;[m
+[32m+[m[32m  onAddComment: (photoId: string, text: string) => void;[m
+[32m+[m[32m}) => {[m
+[32m+[m[32m  const [text, setText] = useState("");[m
+[32m+[m
+[32m+[m[32m  const handleSend = () => {[m
+[32m+[m[32m    if (!text.trim() || !photo) return;[m
+[32m+[m[32m    onAddComment(photo.id, text.trim());[m
+[32m+[m[32m    setText("");[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  if (!photo) return null;[m
+ [m
+[31m-export default function Profile() {[m
+   return ([m
+[31m-    <ThemedView[m
+[31m-      style={{ flex: 1, justifyContent: "center", alignItems: "center" }}[m
+[32m+[m[32m    <Modal visible={visible} animationType="slide" transparent>[m
+[32m+[m[32m      <View style={styles.modalOverlay}>[m
+[32m+[m[32m        <View style={styles.modalSheet}>[m
+[32m+[m[32m          <View style={styles.modalHandle} />[m
+[32m+[m
+[32m+[m[32m          <Text style={styles.modalTitle}>Comentários</Text>[m
+[32m+[m[32m          <Text style={styles.modalSubtitle}>📍 {photo.location}</Text>[m
+[32m+[m
+[32m+[m[32m          <ScrollView style={styles.commentsList}>[m
+[32m+[m[32m            {photo.comments.length === 0 ? ([m
+[32m+[m[32m              <Text style={styles.noComments}>Seja o primeiro a comentar!</Text>[m
+[32m+[m[32m            ) : ([m
+[32m+[m[32m              photo.comments.map((c) => ([m
+[32m+[m[32m                <View key={c.id} style={styles.commentRow}>[m
+[32m+[m[32m                  <Image[m
+[32m+[m[32m                    source={{ uri: c.avatar }}[m
+[32m+[m[32m                    style={styles.commentAvatar}[m
+[32m+[m[32m                  />[m
+[32m+[m[32m                  <View style={styles.commentBubble}>[m
+[32m+[m[32m                    <Text style={styles.commentUser}>{c.user}</Text>[m
+[32m+[m[32m                    <Text style={styles.commentText}>{c.text}</Text>[m
+[32m+[m[32m                  </View>[m
+[32m+[m[32m                  <Text style={styles.commentTime}>{c.time}</Text>[m
+[32m+[m[32m                </View>[m
+[32m+[m[32m              ))[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </ScrollView>[m
+[32m+[m
+[32m+[m[32m          <View style={styles.commentInputRow}>[m
+[32m+[m[32m            <TextInput[m
+[32m+[m[32m              style={styles.commentInput}[m
+[32m+[m[32m              placeholder="Adicionar comentário..."[m
+[32m+[m[32m              placeholderTextColor="#999"[m
+[32m+[m[32m              value={text}[m
+[32m+[m[32m              onChangeText={setText}[m
+[32m+[m[32m              multiline[m
+[32m+[m[32m            />[m
+[32m+[m[32m            <TouchableOpacity[m
+[32m+[m[32m              style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}[m
+[32m+[m[32m              onPress={handleSend}[m
+[32m+[m[32m              disabled={!text.trim()}[m
+[32m+[m[32m            >[m
+[32m+[m[32m              <Text style={styles.sendBtnText}>Enviar</Text>[m
+[32m+[m[32m            </TouchableOpacity>[m
+[32m+[m[32m          </View>[m
+[32m+[m
+[32m+[m[32m          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>[m
+[32m+[m[32m            <Text style={styles.closeBtnText}>Fechar</Text>[m
+[32m+[m[32m          </TouchableOpacity>[m
+[32m+[m[32m        </View>[m
+[32m+[m[32m      </View>[m
+[32m+[m[32m    </Modal>[m
+[32m+[m[32m  );[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32m// ─── Tela principal ───────────────────────────────────────────────────────────[m
+[32m+[m[32mexport default function Profile() {[m
+[32m+[m[32m  const [photos, setPhotos] = useState<Photo[]>(MOCK_PHOTOS);[m
+[32m+[m[32m  const [activeTab, setActiveTab] = useState<"posts" | "saved">("posts");[m
+[32m+[m[32m  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);[m
+[32m+[m[32m  const [commentsVisible, setCommentsVisible] = useState(false);[m
+[32m+[m
+[32m+[m[32m  const visitedCount = photos.length;[m
+[32m+[m[32m  const likedCount = photos.filter((p) => p.liked).length;[m
+[32m+[m[32m  const totalLikesReceived = photos.reduce((acc, p) => acc + p.likes, 0);[m
+[32m+[m
+[32m+[m[32m  const openComments = (photo: Photo) => {[m
+[32m+[m[32m    setSelectedPhoto(photo);[m
+[32m+[m[32m    setCommentsVisible(true);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const addComment = (photoId: string, text: string) => {[m
+[32m+[m[32m    const newComment = {[m
+[32m+[m[32m      id: Date.now().toString(),[m
+[32m+[m[32m      user: "voce",[m
+[32m+[m[32m      avatar: "https://i.pravatar.cc/40?img=10",[m
+[32m+[m[32m      text,[m
+[32m+[m[32m      time: "agora",[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    setPhotos((prev) =>[m
+[32m+[m[32m      prev.map((p) =>[m
+[32m+[m[32m        p.id === photoId ? { ...p, comments: [...p.comments, newComment] } : p,[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    setSelectedPhoto((prev) =>[m
+[32m+[m[32m      prev && prev.id === photoId[m
+[32m+[m[32m        ? { ...prev, comments: [...prev.comments, newComment] }[m
+[32m+[m[32m        : prev,[m
+[32m+[m[32m    );[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const savedPhotos = photos.filter((p) => p.liked);[m
+[32m+[m
+[32m+[m[32m  // ✅ Célula de foto corrigida — source={item.uri} direto, sem { uri: }[m
+[32m+[m[32m  const PhotoCell = ({ item }: { item: Photo }) => ([m
+[32m+[m[32m    <TouchableOpacity[m
+[32m+[m[32m      style={styles.photoCell}[m
+[32m+[m[32m      onPress={() => openComments(item)}[m
+[32m+[m[32m      activeOpacity={0.85}[m
+     >[m
+[31m-      <ThemedText>Perfil do Usuário</ThemedText>[m
+[31m-    </ThemedView>[m
+[32m+[m[32m      <Image source={item.uri} style={styles.photoThumb} />[m
+[32m+[m[32m      {item.liked && ([m
+[32m+[m[32m        <View style={styles.likedBadge}>[m
+[32m+[m[32m          <Text style={{ fontSize: 10 }}>❤️</Text>[m
+[32m+[m[32m        </View>[m
+[32m+[m[32m      )}[m
+[32m+[m[32m      <View style={styles.photoOverlay}>[m
+[32m+[m[32m        <Text style={styles.photoOverlayText}>💬 {item.comments.length}</Text>[m
+[32m+[m[32m        <Text style={styles.photoOverlayText}>❤️ {item.likes}</Text>[m
+[32m+[m[32m      </View>[m
+[32m+[m[32m    </TouchableOpacity>[m
+[32m+[m[32m  );[m
+[32m+[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <SafeAreaView style={styles.safe}>[m
+[32m+[m[32m      <StatusBar barStyle="light-content" backgroundColor="#4A27C4" />[m
+[32m+[m[32m      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>[m
+[32m+[m[32m        {/* ── Header ── */}[m
+[32m+[m[32m        <View style={styles.header}>[m
+[32m+[m[32m          <View style={styles.headerTop}>[m
+[32m+[m[32m            <Text style={styles.appName}>Peakly</Text>[m
+[32m+[m[32m            <TouchableOpacity style={styles.settingsBtn}>[m
+[32m+[m[32m              <Text style={styles.settingsIcon}>⚙️</Text>[m
+[32m+[m[32m            </TouchableOpacity>[m
+[32m+[m[32m          </View>[m
+[32m+[m
+[32m+[m[32m          <View style={styles.profileRow}>[m
+[32m+[m[32m            <View style={styles.avatarWrapper}>[m
+[32m+[m[32m              <Image[m
+[32m+[m[32m                source={require("../../assets/images/profile-img.png")}[m
+[32m+[m[32m                style={styles.avatar}[m
+[32m+[m[32m              />[m
+[32m+[m[32m              <TouchableOpacity style={styles.addAvatarBtn}>[m
+[32m+[m[32m                <Text style={styles.addAvatarIcon}>+</Text>[m
+[32m+[m[32m              </TouchableOpacity>[m
+[32m+[m[32m            </View>[m
+[32m+[m
+[32m+[m[32m            <View style={styles.statsRow}>[m
+[32m+[m[32m              <StatBox value={visitedCount} label="Visitados" />[m
+[32m+[m[32m              <StatBox value={likedCount} label="Curtidos" />[m
+[32m+[m[32m              <StatBox value={totalLikesReceived} label="Curtidas" />[m
+[32m+[m[32m            </View>[m
+[32m+[m[32m          </View>[m
+[32m+[m
+[32m+[m[32m          <View style={styles.bioSection}>[m
+[32m+[m[32m            <Text style={styles.userName}>João Aventureiro</Text>[m
+[32m+[m[32m            <Text style={styles.userHandle}>@joao_peaks</Text>[m
+[32m+[m[32m            <Text style={styles.userBio}>[m
+[32m+[m[32m              🏔️ Amante de trilhas e cachoeiras E casadas{"\n"}[m
+[32m+[m[32m              📍 CASINHAS,SAO PEDRO , BR[m
+[32m+[m[32m            </Text>[m
+[32m+[m[32m          </View>[m
+[32m+[m
+[32m+[m[32m          <View style={styles.actionRow}>[m
+[32m+[m[32m            <TouchableOpacity style={styles.editBtn}>[m
+[32m+[m[32m              <Text style={styles.editBtnText}>Editar Perfil</Text>[m
+[32m+[m[32m            </TouchableOpacity>[m
+[32m+[m[32m            <TouchableOpacity style={styles.shareBtn}>[m
+[32m+[m[32m              <Text style={styles.shareBtnText}>Compartilhar</Text>[m
+[32m+[m[32m            </TouchableOpacity>[m
+[32m+[m[32m            <TouchableOpacity style={styles.addPhotoBtn}>[m
+[32m+[m[32m              <Text style={styles.addPhotoBtnText}>📷</Text>[m
+[32m+[m[32m            </TouchableOpacity>[m
+[32m+[m[32m          </View>[m
+[32m+[m[32m        </View>[m
+[32m+[m
+[32m+[m[32m        {/* ── Destaques ── */}[m
+[32m+[m[32m        <ScrollView[m
+[32m+[m[32m          horizontal[m
+[32m+[m[32m          showsHorizontalScrollIndicator={false}[m
+[32m+[m[32m          style={styles.highlightsScroll}[m
+[32m+[m[32m          contentContainerStyle={styles.highlightsContent}[m
+[32m+[m[32m        >[m
+[32m+[m[32m          {["Trilhas", "Cachoeiras", "Picos", "Viagens", "+ Novo"].map([m
+[32m+[m[32m            (h, i) => ([m
+[32m+[m[32m              <TouchableOpacity key={i} style={styles.highlight}>[m
+[32m+[m[32m                <View[m
+[32m+[m[32m                  style={[[m
+[32m+[m[32m                    styles.highlightCircle,[m
+[32m+[m[32m                    i === 4 && styles.highlightAdd,[m
+[32m+[m[32m                  ]}[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  <Text style={styles.highlightEmoji}>[m
+[32m+[m[32m                    {["🥾", "💧", "⛰️", "✈️", "+"][i]}[m
+[32m+[m[32m                  </Text>[m
+[32m+[m[32m                </View>[m
+[32m+[m[32m                <Text style={styles.highlightLabel}>{h}</Text>[m
+[32m+[m[32m              </TouchableOpacity>[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          )}[m
+[32m+[m[32m        </ScrollView>[m
+[32m+[m
+[32m+[m[32m        {/* ── Abas ── */}[m
+[32m+[m[32m        <View style={styles.tabsRow}>[m
+[32m+[m[32m          <TouchableOpacity[m
+[32m+[m[32m            style={[styles.tab, activeTab === "posts" && styles.tabActive]}[m
+[32m+[m[32m            onPress={() => setActiveTab("posts")}[m
+[32m+[m[32m          >[m
+[32m+[m[32m            <Text[m
+[32m+[m[32m              style={[[m
+[32m+[m[32m                styles.tabIcon,[m
+[32m+[m[32m                activeTab === "posts" && styles.tabIconActive,[m
+[32m+[m[32m              ]}[m
+[32m+[m[32m            >[m
+[32m+[m[32m              ⊞[m
+[32m+[m[32m            </Text>[m
+[32m+[m[32m          </TouchableOpacity>[m
+[32m+[m[32m          <TouchableOpacity[m
+[32m+[m[32m            style={[styles.tab, activeTab === "saved" && styles.tabActive]}[m
+[32m+[m[32m            onPress={() => setActiveTab("saved")}[m
+[32m+[m[32m          >[m
+[32m+[m[32m            <Text[m
+[32m+[m[32m              style={[[m
+[32m+[m[32m                styles.tabIcon,[m
+[32m+[m[32m                activeTab === "saved" && styles.tabIconActive,[m
+[32m+[m[32m              ]}[m
+[32m+[m[32m            >[m
+[32m+[m[32m              🔖[m
+[32m+[m[32m            </Text>[m
+[32m+[m[32m          </TouchableOpacity>[m
+[32m+[m[32m        </View>[m
+[32m+[m
+[32m+[m[32m        {/* ── Grade de fotos ── */}[m
+[32m+[m[32m        {activeTab === "posts" ? ([m
+[32m+[m[32m          <View style={styles.photoGrid}>[m
+[32m+[m[32m            {photos.map((item) => ([m
+[32m+[m[32m              <PhotoCell key={item.id} item={item} />[m
+[32m+[m[32m            ))}[m
+[32m+[m[32m          </View>[m
+[32m+[m[32m        ) : ([m
+[32m+[m[32m          <View style={styles.photoGrid}>[m
+[32m+[m[32m            {savedPhotos.length === 0 ? ([m
+[32m+[m[32m              <View style={styles.emptyState}>[m
+[32m+[m[32m                <Text style={styles.emptyEmoji}>🔖</Text>[m
+[32m+[m[32m                <Text style={styles.emptyText}>Nenhum lugar curtido ainda</Text>[m
+[32m+[m[32m              </View>[m
+[32m+[m[32m            ) : ([m
+[32m+[m[32m              savedPhotos.map((item) => <PhotoCell key={item.id} item={item} />)[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </View>[m
+[32m+[m[32m        )}[m
+[32m+[m
+[32m+[m[32m        <View style={{ height: 80 }} />[m
+[32m+[m[32m      </ScrollView>[m
+[32m+[m
+[32m+[m[32m      <CommentsModal[m
+[32m+[m[32m        visible={commentsVisible}[m
+[32m+[m[32m        photo={selectedPhoto}[m
+[32m+[m[32m        onClose={() => setCommentsVisible(false)}[m
+[32m+[m[32m        onAddComment={addComment}[m
+[32m+[m[32m      />[m
+[32m+[m[32m    </SafeAreaView>[m
+   );[m
+ }[m
+[32m+[m
+[32m+[m[32m// ─── Estilos ──────────────────────────────────────────────────────────────────[m
+[32m+[m[32mconst styles = StyleSheet.create({[m
+[32m+[m[32m  safe: { flex: 1, backgroundColor: "#F0F2FF" },[m
+[32m+[m[32m  container: { flex: 1, backgroundColor: "#F0F2FF" },[m
+[32m+[m
+[32m+[m[32m  header: {[m
+[32m+[m[32m    backgroundColor: "#5B30E8",[m
+[32m+[m[32m    paddingTop: 12,[m
+[32m+[m[32m    paddingHorizontal: 16,[m
+[32m+[m[32m    paddingBottom: 20,[m
+[32m+[m[32m    borderBottomLeftRadius: 24,[m
+[32m+[m[32m    borderBottomRightRadius: 24,[m
+[32m+[m[32m    shadowColor: "#5B30E8",[m
+[32m+[m[32m    shadowOffset: { width: 0, height: 8 },[m
+[32m+[m[32m    shadowOpacity: 0.35,[m
+[32m+[m[32m    shadowRadius: 16,[m
+[32m+[m[32m    elevation: 12,[m
+[32m+[m[32m  },[m
+[32m+[m[32m  headerTop: {[m
+[32m+[m[32m    flexDirection: "row",[m
+[32m+[m[32m    justifyContent: "space-between",[m
+[32m+[m[32m    alignItems: "center",[m
+[32m+[m[32m    marginBottom: 16,[m
+[32m+[m[32m  },[m
+[32m+[m[32m  appName: {[m
+[32m+[m[32m    color: "#fff",[m
+[32m+[m[32m    fontSize: 22,[m
+[32m+[m[32m    fontWeight: "800",[m
+[32m+[m[32m    letterSpacing: 0.5,[m
+[32m+[m[32m  },[m
+[32m+[m[32m  settingsBtn: { padding: 4 },[m
+[32m+[m[32m  settingsIcon: { fontSize: 22 },
